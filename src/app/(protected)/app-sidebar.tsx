@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button'  // Import the Button component
 import { Plus } from 'lucide-react'  // Import the Plus icon
 // ✨ DON'T import from 'process' — remove `import type { title } from 'process'`
 import Image from 'next/image';
+import useProject from '@/hooks/use-project'
 
 
 const items = [
@@ -47,25 +48,12 @@ const items = [
   },
 ]
 
-const Projects = [
-  {
-    name: 'Project 1',
-    url: '/projects/project1',
-  },
-  {
-    name: 'Project 2',
-    url: '/projects/project2',
-  },
-  {
-    name: 'Project 3',
-    url: '/projects/project3',
-  },
-]
 
 export const AppSidebar = () => {
   const pathname = usePathname()
   const {open} = useSidebar() 
   const [isMounted, setIsMounted] = useState(false)
+  const { projects , projectId, setProjectId } = useProject() // Assuming you have a hook to fetch projects
 
   useEffect(() => {
     setIsMounted(true)
@@ -115,15 +103,15 @@ export const AppSidebar = () => {
           <SidebarGroupLabel>Projects</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {Projects.map((project) => {
+              {projects?.map((project) => {
                 return (
                   <SidebarMenuItem key={project.name}>
                     <SidebarMenuButton asChild>
-                      <div> 
+                      <div onClick={() => setProjectId(project.id)}> 
                         <div className={cn(
                           'rounded-sm border size-6 flex items-center justify-center text-sm bg-white text-primary',
                           {
-                            '!bg-primary text-white': true
+                            '!bg-primary text-white': project.id === projectId
                           }
                         )}>
                           {project.name[0]}
