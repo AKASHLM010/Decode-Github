@@ -67,11 +67,9 @@ model SourceCodeEmbedding {
   id          String   @id @default(cuid())
 
   summaryEmbedding   Unsupported("Vector(768)")?
-
+  sourceCode  String
   fileName    String
   summary     String
-  sourceCode  String
-
   
   projectId   String
   project     Project @relation(fields: [projectId], references: [id])
