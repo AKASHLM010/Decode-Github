@@ -2,7 +2,8 @@ import { Octokit } from 'octokit';
 import db from "@/lib/db";
 import axios from 'axios';
 import { headers } from 'next/headers';
-import { aiSummariseCommit } from './gemini';
+import { aiSummariseCommit } from './ollama';
+import { string } from 'zod';
 
 export const octokit = new Octokit({
   auth: process.env.GITHUB_TOKEN,
@@ -39,45 +40,76 @@ export const getCommitHashes = async (githubUrl: string): Promise<Response[]> =>
 };
 
 export const pollCommits = async (projectId: string) => {
-    const { project, githubUrl } = await fetchProjectGithubUrl(projectId)
-    const commitHashes = await getCommitHashes(githubUrl)
-    const unprocessedCommits = await filterUnprocessedCommits(projectId, commitHashes)
-    const summaryResponses = await Promise.allSettled(unprocessedCommits.map(commit => {
-        return summariseCommits(githubUrl,commit.commitHash)
-    }))
-    const summaries = summaryResponses.map((response) =>{
-        if(response.status === 'fulfilled'){
-            return response.value as string
-        }
-        return ""
+  const { project, githubUrl } = await fetchProjectGithubUrl(projectId);
+  const commitHashes = await getCommitHashes(githubUrl);
+  const unprocessedCommits = await filterUnprocessedCommits(projectId, commitHashes);
+
+  console.log(`✅ Commits to process (new): ${unprocessedCommits.length}`);
+
+  const summaries: string[] = [];
+
+  for (const commit of unprocessedCommits) {
+    console.log(`📦 Summarising commit ${commit.commitHash}`);
+    try {
+      const summary = await summariseCommits(githubUrl, commit.commitHash);
+      summaries.push(summary);
+    } catch (error) {
+      console.error(`❌ Failed to summarise commit ${commit.commitHash}:`, error);
+      summaries.push(""); // fallback empty summary
+    }
+  }
+
+  const commits = await db.commit.createMany({
+    data: summaries.map((summary, index) => {
+      console.log(`processing commit ${index}`);
+      return {
+        projectId: projectId,
+        commitHash: unprocessedCommits[index]!.commitHash,
+        commitMessage: unprocessedCommits[index]!.commitMessage,
+        commitAuthorName: unprocessedCommits[index]!.commitAuthorName,
+        commitAuthorAvatar: unprocessedCommits[index]!.commitAuthorAvatar,
+        commitDate: unprocessedCommits[index]!.commitDate,
+        summary
+      };
     })
-    const commits = await db.commit.createMany({
-        data: summaries.map((summary ,index)=>{
-            console.log(`processing commit ${index}`)
-            return {
-                projectId : projectId,
-                commitHash: unprocessedCommits[index]!.commitHash,
-                commitMessage: unprocessedCommits[index]!.commitMessage,
-                commitAuthorName: unprocessedCommits[index]!.commitAuthorName,
-                commitAuthorAvatar: unprocessedCommits[index]!.commitAuthorAvatar,
-                commitDate: unprocessedCommits[index]!.commitDate,
-                summary
-            }
-        })
-    })
-    return commits;
-    
-}
+  });
+
+  return commits;
+};
+
+
 
 async function summariseCommits(githubUrl: string, commitHash: string) {
-    // get the diff and then pass to ai
-const {data} = await axios.get(`${githubUrl}/commit/${commitHash}.diff`, {
-    headers: {
-        Accept: 'application/vnd.github.v3.diff'
+  console.log(`🔍 summariseCommits called for commitHash: ${commitHash}`);
+
+  try {
+    const [owner, repo] = githubUrl.split('/').slice(-2);
+
+    if (!owner || !repo) {
+      throw new Error('Invalid GitHub URL');
     }
-});
-return await aiSummariseCommit(data) || "";
+
+    const { data } = await octokit.rest.repos.getCommit({
+      owner,
+      repo,
+      ref: commitHash
+    });
+
+    // Combine patches into a single diff string
+    const diff = (data.files ?? [])
+      .map(file => file.patch)
+      .filter(Boolean)
+      .join('\n');
+
+    console.log(`📦 Fetched diff for commit ${commitHash}, length: ${diff.length}`);
+
+    return await aiSummariseCommit(diff) || "";
+  } catch (error) {
+    console.error(`❌ Failed to fetch diff or summarise for commit ${commitHash}:`, error);
+    return ""; // or throw if you want Promise.allSettled to catch
+  }
 }
+
     
     
 
@@ -99,13 +131,16 @@ async function fetchProjectGithubUrl(projectId: string){
 }
 
 async function filterUnprocessedCommits(projectId: string, commitHashes: Response[]) {
-    const processedCommits = await db.commit.findMany({
-        where: {
-            projectId,
-        },
-    });
+  const processedCommits = await db.commit.findMany({
+    where: { projectId },
+  });
 
-    const unprocessedCommits = commitHashes.filter((commit) => !processedCommits.some((processedCommit) => processedCommit.commitHash === commit.commitHash));
-    return unprocessedCommits;
+  console.log(`🔍 Already processed commits for projectId=${projectId}:`, processedCommits.map(c => c.commitHash));
+
+  const unprocessedCommits = commitHashes.filter((commit) =>
+    !processedCommits.some((processedCommit) => processedCommit.commitHash === commit.commitHash)
+  );
+
+  console.log(`✅ Commits to process (new): ${unprocessedCommits.length}`);
+  return unprocessedCommits;
 }
-
