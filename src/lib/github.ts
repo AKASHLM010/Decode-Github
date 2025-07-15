@@ -1,9 +1,7 @@
 import { Octokit } from 'octokit';
 import db from "@/lib/db";
-import axios from 'axios';
-import { headers } from 'next/headers';
-import { aiSummariseCommit } from './ollama';
-import { string } from 'zod';
+import { aiSummariseCommit } from './gemini';
+
 
 export const octokit = new Octokit({
   auth: process.env.GITHUB_TOKEN,

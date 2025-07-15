@@ -1,6 +1,6 @@
 import { GithubRepoLoader } from '@langchain/community/document_loaders/web/github';
 import { Document } from '@langchain/core/documents';
-import { generateEmbedding, summariseCode } from './ollama';
+import { generateEmbedding, summariseCode } from './gemini';
 import db from "@/lib/db";
 import pLimit from 'p-limit';
 
@@ -80,4 +80,3 @@ const generateEmbeddings = async (docs: Document[]) => {
         }
     }))
 }
-
