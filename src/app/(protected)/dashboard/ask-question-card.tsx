@@ -56,7 +56,10 @@ const AskQuestionCard = () => {
         <DialogContent className="max-h-[80vh] overflow-auto sm:max-w-[70vw]">
           <DialogHeader>
             <div className="flex items-center space-x-2">
-              <Image src="/logo.png" alt="decode" width={40} height={40} />
+              <DialogTitle>
+                <Image src="/logo.png" alt="decode" width={40} height={40} />
+              </DialogTitle>
+              
               <Button
                 disabled={saveAnswer.isPending}
                 variant="outline"
