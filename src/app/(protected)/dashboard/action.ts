@@ -25,6 +25,8 @@ export async function askQuestion(question: string, projectId: string){
         ORDER BY similarity DESC 
         LIMIT 10
     ` as { fileName:string; sourceCode: string; summary: string }[]
+    console.log('Vector DB result:', result);
+
 
 let context = ''
 
@@ -57,6 +59,7 @@ for (const doc of result){
         `,
     });
     for await (const delta of textStream){
+        console.log('🧩 Gemini delta:', delta);   // <--- add this
         stream.update(delta)
     }
 

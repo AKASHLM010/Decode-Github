@@ -3,6 +3,7 @@ import { createTRPCRouter , protectedProcedure ,publicProcedure} from "../trpc";
 import db from "@/lib/db";
 import { pollCommits } from "@/lib/github";
 import { indexGithubRepo } from "@/lib/github-loader";
+import { get } from "http";
 
 export const projectRouter = createTRPCRouter({
     createProject: protectedProcedure.input(
@@ -54,7 +55,7 @@ export const projectRouter = createTRPCRouter({
     })).mutation(async ({ ctx, input }) => {
         return await ctx.db.question.create({
             data: {
-                answer: input.question,
+                answer: input.answer,
                 filesReferences: input.filesReferences,
                 projectId: input.projectId,
                 question: input.question,
@@ -62,4 +63,18 @@ export const projectRouter = createTRPCRouter({
             },
         });
     }),
-})
+    getQuestions: protectedProcedure.input(z.object({
+        projectId:z.string()})).query(async ({ ctx, input }) => {
+            return await ctx.db.question.findMany({
+                where: {
+                    projectId: input.projectId,
+                },
+                include:{
+                    user: true,
+                },
+                orderBy: {
+                    createdAt: 'desc',
+                }
+            });
+        })
+    });

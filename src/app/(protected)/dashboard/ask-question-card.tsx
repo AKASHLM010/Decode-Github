@@ -43,6 +43,7 @@ const AskQuestionCard = () => {
     setFilesReferences(filesReferences);
 
     for await (const delta of readStreamableValue(output)) {
+      console.log('💡 Frontend delta:', delta);   // <--- add this
       if (delta) {
         setAnswer((ans) => ans + delta);
       }
@@ -64,6 +65,7 @@ const AskQuestionCard = () => {
                 disabled={saveAnswer.isPending}
                 variant="outline"
                 onClick={() => {
+                  console.log('Saving answer:', answer);
                   saveAnswer.mutate(
                     {
                       projectId: project!.id,
@@ -88,9 +90,13 @@ const AskQuestionCard = () => {
           </DialogHeader>
 
           <MDEditor.Markdown
-            source={answer}
-            className="max-h-[30vh] max-w-[70vw] overflow-auto"
-          />
+                source={answer}
+                className="prose bg-background text-foreground"
+                style={{
+                  backgroundColor: "var(--background)",
+                  color: "var(--muted-foreground)",
+                }}
+              />
 
           <div className="h-4"></div>
           <CodeReferences filesReferences={filesReferences} />
