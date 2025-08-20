@@ -8,7 +8,8 @@ import CommitLog from './commit-log'
 import MeetingCard from './meeting-card'
 import AskQuestionCard from './ask-question-card'
 import ArchiveButton from './archive-button'
-import InviteButton from './invite-button'
+const InviteButton = dynamic(() => import('./invite-button'), { ssr: false })
+import dynamic from 'next/dynamic'
 import TeamMembers from './team-members'
 
 
